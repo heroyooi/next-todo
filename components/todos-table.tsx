@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableHeader,
@@ -14,9 +14,16 @@ import {
   PopoverContent,
   PopoverTrigger,
   Spinner,
+  DropdownTrigger,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
 } from '@nextui-org/react';
+import { VerticalDotsIcon } from './icons';
 import { Todo } from '@/types';
 import { useRouter } from 'next/navigation';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const TodosTable = ({ todos }: { todos: Todo[] }) => {
   // 할일 추가 가능 여부
@@ -30,13 +37,16 @@ const TodosTable = ({ todos }: { todos: Todo[] }) => {
 
   const router = useRouter();
 
+  const notifyTodoAddedEvent = (msg: string) => toast.success(msg);
+
   const addATodoHandler = async () => {
     if (!todoAddEnable) {
       return;
     }
-
+    setTodoAddEnable(false);
     setIsLoading(true);
 
+    await new Promise((f) => setTimeout(f, 600));
     await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/todos`, {
       method: 'post',
       body: JSON.stringify({
@@ -47,24 +57,8 @@ const TodosTable = ({ todos }: { todos: Todo[] }) => {
     setNewTodoInput('');
     router.refresh();
     setIsLoading(false);
-    setTodoAddEnable(false);
-    // console.log(`할일 추가완료 : ${newTodoInput}`);
-  };
-
-  const DisabledTodoAddButton = () => {
-    <Popover placement='top' showArrow={true}>
-      <PopoverTrigger>
-        <Button color='default' className='h-14'>
-          추가
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent>
-        <div className='px-1 py-2'>
-          <div className='text-small font-bold'>😀</div>
-          <div className='text-tiny'>할일을 입력해주세요!</div>
-        </div>
-      </PopoverContent>
-    </Popover>;
+    notifyTodoAddedEvent('할일이 성공적으로 추가되었습니다!');
+    console.log(`할일 추가완료 : ${newTodoInput}`);
   };
 
   const TodoRow = (aTodo: Todo) => {
@@ -74,12 +68,40 @@ const TodosTable = ({ todos }: { todos: Todo[] }) => {
         <TableCell>{aTodo.title}</TableCell>
         <TableCell>{aTodo.is_done ? '✅' : '미완료'}</TableCell>
         <TableCell>{`${aTodo.created_at}`}</TableCell>
+        <TableCell>
+          <div className='relative flex justify-end items-center gap-2'>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button isIconOnly size='sm' variant='light'>
+                  <VerticalDotsIcon className='text-default-300' />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu>
+                <DropdownItem>상세보기</DropdownItem>
+                <DropdownItem>수정</DropdownItem>
+                <DropdownItem>삭제</DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
+        </TableCell>
       </TableRow>
     );
   };
 
   return (
     <div className='flex flex-col space-y-2'>
+      <ToastContainer
+        position='top-right'
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme='dark'
+      />
       <div className='flex w-full flex-wrap md:flex-nowrap gap-4'>
         <Input
           type='text'
@@ -101,7 +123,19 @@ const TodosTable = ({ todos }: { todos: Todo[] }) => {
             추가
           </Button>
         ) : (
-          DisabledTodoAddButton()
+          <Popover placement='top' showArrow={true}>
+            <PopoverTrigger>
+              <Button color='default' className='h-14'>
+                추가
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent>
+              <div className='px-1 py-2'>
+                <div className='text-small font-bold'>😀</div>
+                <div className='text-tiny'>할일을 입력해주세요!</div>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
       <div className='h-6'>
@@ -113,6 +147,7 @@ const TodosTable = ({ todos }: { todos: Todo[] }) => {
           <TableColumn>할일내용</TableColumn>
           <TableColumn>완료여부</TableColumn>
           <TableColumn>생성일</TableColumn>
+          <TableColumn>액션</TableColumn>
         </TableHeader>
         <TableBody emptyContent='보여줄 데이터가 없습니다.'>
           {todos && todos.map((aTodo: Todo) => TodoRow(aTodo))}
